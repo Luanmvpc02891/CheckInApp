@@ -3,11 +3,8 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/D:/FPT_Polytechnic/Hoc_Ky_6/ThucTap/da_tts_nhutin/CheckInApp/src/com/nhutin/model/Participants.java</file>
-            <file>file:/D:/FPT_Polytechnic/Hoc_Ky_6/ThucTap/da_tts_nhutin/CheckInApp/src/GUI/Menu.java</file>
-            <file>file:/D:/FPT_Polytechnic/Hoc_Ky_6/ThucTap/da_tts_nhutin/CheckInApp/src/com/nhutin/model/Events.java</file>
-            <file>file:/D:/FPT_Polytechnic/Hoc_Ky_6/ThucTap/da_tts_nhutin/CheckInApp/src/com/nhutin/dao/EventsDao.java</file>
-            <file>file:/D:/FPT_Polytechnic/Hoc_Ky_6/ThucTap/da_tts_nhutin/CheckInApp/src/com/nhutin/dao/ParticipantsDao.java</file>
+            <file>file:/E:/FPT_Polytechnic/KY_7/Thuc_Tap/CheckInApp/src/GUI/Menu.java</file>
+            <file>file:/E:/FPT_Polytechnic/KY_7/Thuc_Tap/CheckInApp/src/GUI/Camera.java</file>
         </group>
     </open-files>
 </project-private>
