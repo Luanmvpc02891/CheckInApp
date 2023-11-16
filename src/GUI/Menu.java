@@ -5,7 +5,6 @@
  */
 package GUI;
 
-
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -13,12 +12,15 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.nhutin.component.TableGradientCell;
 import com.nhutin.dao.EventsDao;
+import com.nhutin.dao.ParticipantsDao;
 import com.nhutin.helper.DialogHelper;
 import com.nhutin.model.Events;
+import com.nhutin.model.Participants;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -31,8 +33,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JSpinner;
 import javax.swing.table.DefaultTableModel;
@@ -67,6 +71,7 @@ public class Menu extends javax.swing.JFrame {
         jplSlideMenu.setSize(210, 600);
         initDateTimePicker();
         initTable();
+        initTableTK();
         setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
         pack();
         setLocationRelativeTo(null);
@@ -309,6 +314,218 @@ public class Menu extends javax.swing.JFrame {
         }
     }
 
+//    tài khoản bắt đầu
+    ParticipantsDao daoTK = new ParticipantsDao();
+
+    public void initTableTK() throws SQLException {
+        DefaultTableModel model = (DefaultTableModel) tblUser.getModel();
+        model.setRowCount(0);
+
+        try {
+            List<Participants> list = daoTK.getAllParticipants();
+
+            for (Participants participants : list) {
+                Object[] row = {
+                    participants.getParticipantID(),
+                    daoTK.getEventNameById(participants.getEventID()), // Lấy tên sự kiện thay vì ID
+                    participants.getFirstName(),
+                    participants.getLastName(),
+                    participants.getEmail(),
+                    participants.getBarcode()
+                };
+
+                model.addRow(row);
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+            DialogHelper.alert(this, "Lỗi truy vấn dữ liệu tài khoản!");
+        }
+
+        try {
+            List<String> eventNames = daoTK.getAllEventNames();
+            String[] eventNameArray = eventNames.toArray(new String[0]);
+            DefaultComboBoxModel<String> modelcbo = new DefaultComboBoxModel<>(eventNameArray);
+            cboEventId.setModel(modelcbo);
+        } catch (Exception ex) {
+            System.out.println(ex);
+            DialogHelper.alert(this, "Lỗi khi tải Event Name!");
+        }
+    }
+
+    int indexTK;
+
+    void editTK() {
+        try {
+            int id = (int) tblUser.getValueAt(this.indexTK, 0);
+            Participants model = daoTK.getParticipantById(id);
+
+            if (model != null) {
+                txtparticipantID.setText(String.valueOf(model.getParticipantID()));
+                // Thay vì set Item bằng ID, hãy set Item bằng tên sự kiện
+                String eventName = daoTK.getEventNameById(model.getEventID());
+                cboEventId.setSelectedItem(eventName);
+                txtfirstName.setText(model.getFirstName());
+                txtlastName.setText(model.getLastName());
+                txtemail.setText(String.valueOf(model.getEmail()));
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+            DialogHelper.alert(this, "Lỗi truy vấn dữ liệu!");
+        }
+    }
+
+    void clearTK() {
+        txtparticipantID.setText("");
+        cboEventId.setSelectedIndex(0);
+        txtfirstName.setText("");
+        txtlastName.setText("");
+        txtemail.setText("");
+    }
+
+    void insertTK() throws ParseException, SQLException {
+        try {
+            // Lấy tên sự kiện đã chọn từ combo box
+            String selectedEventName = (String) cboEventId.getSelectedItem();
+
+            // Lấy EventID tương ứng với tên sự kiện
+            int selectedEventID = daoTK.getEventIdByName(selectedEventName);
+
+            // Kiểm tra định dạng của email
+            if (!isValidEmail(txtemail.getText())) {
+                DialogHelper.alert(this, "Sai định dạng email!");
+                return; // Dừng hàm nếu email không hợp lệ
+            }
+
+            // Kiểm tra xem email đã tồn tại hay chưa
+            if (isEmailExists(txtemail.getText())) {
+                DialogHelper.alert(this, "Email đã tồn tại. Vui lòng chọn email khác.");
+                return; // Dừng hàm nếu email đã tồn tại
+            }
+
+            Participants participant = new Participants();
+            participant.setEventID(selectedEventID);
+            participant.setFirstName(txtfirstName.getText());
+            participant.setLastName(txtlastName.getText());
+            participant.setBarcode(generateRandomBarcode());
+            participant.setEmail(txtemail.getText());
+
+            // Các bước khác để thêm mới người tham gia vào cơ sở dữ liệu
+            daoTK.addParticipant(participant);
+            DialogHelper.alert(this, "Thêm người tham gia thành công!");
+            clearTK();
+            initTableTK();
+        } catch (Exception ex) {
+            System.out.println(ex);
+            DialogHelper.alert(this, "Lỗi khi thêm mới người tham gia!");
+        }
+    }
+
+    // Hàm tạo chuỗi ngẫu nhiên 5 ký tự
+    private String generateRandomBarcode() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        int length = 5;
+        StringBuilder randomBarcode = new StringBuilder();
+
+        Random random = new SecureRandom();
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(characters.length());
+            randomBarcode.append(characters.charAt(index));
+        }
+
+        return randomBarcode.toString();
+    }
+
+    public void updateTK() throws SQLException {
+        try {
+            // Lấy giá trị từ giao diện người dùng
+            int participantId = Integer.parseInt(txtparticipantID.getText());
+            String selectedEventName = (String) cboEventId.getSelectedItem();
+            String firstName = txtfirstName.getText();
+            String lastName = txtlastName.getText();
+            String email = txtemail.getText();
+
+            // Kiểm tra định dạng của email
+            if (!isValidEmail(email)) {
+                DialogHelper.alert(this, "Sai định dạng email!");
+                return; // Dừng hàm nếu email không hợp lệ
+            }
+
+            // Lấy EventID tương ứng với tên sự kiện
+            int selectedEventID = daoTK.getEventIdByName(selectedEventName);
+
+            // Kiểm tra xem email đã tồn tại hay chưa
+            if (isEmailExists(email)) {
+                DialogHelper.alert(this, "Email đã tồn tại. Vui lòng chọn email khác.");
+                return; // Dừng hàm nếu email đã tồn tại
+            }
+
+            // Tạo đối tượng Participants với các giá trị đã lấy được
+            Participants participant = new Participants();
+            participant.setParticipantID(participantId);
+            participant.setEventID(selectedEventID);
+            participant.setFirstName(firstName);
+            participant.setLastName(lastName);
+            participant.setBarcode(generateRandomBarcode());
+            participant.setEmail(email);
+
+            // Gọi hàm cập nhật từ lớp DAO
+            daoTK.updateParticipant(participant);
+
+            // Hiển thị thông báo cập nhật thành công
+            DialogHelper.alert(this, "Cập nhật người tham gia thành công!");
+
+            // Xóa dữ liệu đã nhập trong giao diện
+            clearTK();
+
+            // Cập nhật lại bảng hiển thị danh sách người tham gia
+            initTableTK();
+        } catch (Exception ex) {
+            // Xử lý lỗi nếu có
+            System.out.println(ex);
+            DialogHelper.alert(this, "Lỗi khi cập nhật người tham gia!");
+        }
+    }
+
+    // Phương thức kiểm tra định dạng email đơn giản
+    private boolean isValidEmail(String email) {
+        // Biểu thức chính quy đơn giản kiểm tra định dạng email
+        String emailRegex = "^[a-zA-Z0-9_]+@[a-zA-Z0-9]+\\.[a-zA-Z]{2,4}$";
+        return email.matches(emailRegex);
+    }
+
+    // Kiểm tra xem email đã tồn tại trong cơ sở dữ liệu hay chưa
+    private boolean isEmailExists(String email) {
+        // Gọi hàm kiểm tra từ lớp DAO
+        Participants existingParticipant = daoTK.getParticipantByEmail(email);
+        return existingParticipant != null;
+    }
+
+    public void deleteTK() throws SQLException {
+        // Lấy giá trị từ trường nhập txtid
+        String TKidString = txtparticipantID.getText();
+
+        // Kiểm tra xem txtid có giá trị không
+        if (TKidString.isEmpty()) {
+            DialogHelper.alert(this, "Vui lòng nhập ID tài khoản cần xóa!");
+            return;
+        }
+
+        try {
+            // Chuyển đổi txtid sang kiểu dữ liệu phù hợp (ví dụ: Integer)
+            int TKid = Integer.parseInt(TKidString);
+
+            // Gọi hàm xóa sự kiện từ lớp DAO
+            daoTK.deleteParticipant(TKid);
+
+            DialogHelper.alert(this, "Xóa thành công!");
+            clearTK();
+            initTableTK();
+        } catch (NumberFormatException e) {
+            DialogHelper.alert(this, "ID sự kiện phải là một số nguyên!");
+        }
+    }
+
+//    tài khoản kết thúc
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -687,7 +904,7 @@ public class Menu extends javax.swing.JFrame {
                     .addGroup(cardTrangChuLayout.createSequentialGroup()
                         .addGap(99, 99, 99)
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 656, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(185, Short.MAX_VALUE))
+                .addContainerGap(183, Short.MAX_VALUE))
         );
         cardTrangChuLayout.setVerticalGroup(
             cardTrangChuLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -826,6 +1043,12 @@ public class Menu extends javax.swing.JFrame {
         txtemail.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtemailActionPerformed(evt);
+            }
+        });
+
+        cboEventId.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboEventIdActionPerformed(evt);
             }
         });
 
@@ -1095,11 +1318,15 @@ public class Menu extends javax.swing.JFrame {
     }//GEN-LAST:event_jLabel5MouseClicked
 
     private void btnMoi1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMoi1ActionPerformed
-        // TODO add your handling code here:
+        clearTK();
     }//GEN-LAST:event_btnMoi1ActionPerformed
 
     private void btnXoaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnXoaActionPerformed
-        // TODO add your handling code here:
+        try {
+            deleteTK();
+        } catch (SQLException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }//GEN-LAST:event_btnXoaActionPerformed
 
     private void button5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_button5ActionPerformed
@@ -1107,7 +1334,11 @@ public class Menu extends javax.swing.JFrame {
     }//GEN-LAST:event_button5ActionPerformed
 
     private void btnSuaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSuaActionPerformed
-        // TODO add your handling code here:
+        try {
+            updateTK();
+        } catch (SQLException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }//GEN-LAST:event_btnSuaActionPerformed
 
     private void txtparticipantIDActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtparticipantIDActionPerformed
@@ -1123,11 +1354,22 @@ public class Menu extends javax.swing.JFrame {
     }//GEN-LAST:event_txtfirstNameActionPerformed
 
     private void tblUserMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblUserMouseClicked
-        // TODO add your handling code here:
+        if (evt.getClickCount() == 2) {
+            this.indexTK = tblUser.rowAtPoint(evt.getPoint());
+            if (this.indexTK >= 0) {
+                this.editTK();
+            }
+        }
     }//GEN-LAST:event_tblUserMouseClicked
 
     private void btnThem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnThem1ActionPerformed
-        // TODO add your handling code here:
+        try {
+            insertTK();
+        } catch (ParseException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }//GEN-LAST:event_btnThem1ActionPerformed
 
     private void txtemailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtemailActionPerformed
@@ -1137,6 +1379,10 @@ public class Menu extends javax.swing.JFrame {
     private void btnquet1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnquet1ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_btnquet1ActionPerformed
+
+    private void cboEventIdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboEventIdActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cboEventIdActionPerformed
 
     /**
      * @param args the command line arguments

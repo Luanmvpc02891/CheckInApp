@@ -82,4 +82,116 @@ public class ParticipantsDao {
         participant.setEmail(rs.getString("Email"));
         return participant;
     }
+
+    // load all danh sách EventId
+    public List<Integer> getAllEventIds() {
+        String sql = "SELECT DISTINCT EventID FROM Participants";
+        List<Integer> eventIds = new ArrayList<>();
+
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql);
+                while (rs.next()) {
+                    int eventId = rs.getInt("EventID");
+                    eventIds.add(eventId);
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        return eventIds;
+    }
+
+    // Lấy tên sự kiện dựa trên ID
+    public String getEventNameById(int eventId) {
+        String sql = "SELECT EventName FROM Events WHERE EventID=?";
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql, eventId);
+                if (rs.next()) {
+                    return rs.getString("EventName");
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        return null;
+    }
+
+    // Lấy danh sách tên sự kiện
+    public List<String> getAllEventNames() {
+        String sql = "SELECT DISTINCT EventName FROM Events";
+        List<String> eventNames = new ArrayList<>();
+
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql);
+                while (rs.next()) {
+                    String eventName = rs.getString("EventName");
+                    eventNames.add(eventName);
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        return eventNames;
+    }
+
+    public int getEventIdByName(String eventName) {
+        String sql = "SELECT EventID FROM Events WHERE EventName=?";
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql, eventName);
+                if (rs.next()) {
+                    return rs.getInt("EventID");
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        return -1; // Trả về -1 hoặc bất kỳ giá trị nào khác cho biết tên sự kiện không được tìm thấy
+    }
+
+    // Kiểm tra xem email đã tồn tại trong cơ sở dữ liệu hay chưa
+    public Participants getParticipantByEmail(String email) {
+        String sql = "SELECT * FROM Participants WHERE Email=?";
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql, email);
+                if (rs.next()) {
+                    return readFromResultSet(rs);
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        return null; // Trả về null nếu email không tồn tại
+    }
 }
