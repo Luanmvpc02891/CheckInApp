@@ -327,7 +327,7 @@ public class Menu extends javax.swing.JFrame {
             for (Participants participants : list) {
                 Object[] row = {
                     participants.getParticipantID(),
-                    daoTK.getEventNameById(participants.getEventID()), // Lấy tên sự kiện thay vì ID
+                    daoTK.getEventNameById(participants.getEventID()),
                     participants.getFirstName(),
                     participants.getLastName(),
                     participants.getEmail(),
@@ -384,22 +384,19 @@ public class Menu extends javax.swing.JFrame {
 
     void insertTK() throws ParseException, SQLException {
         try {
-            // Lấy tên sự kiện đã chọn từ combo box
             String selectedEventName = (String) cboEventId.getSelectedItem();
 
-            // Lấy EventID tương ứng với tên sự kiện
             int selectedEventID = daoTK.getEventIdByName(selectedEventName);
-
             // Kiểm tra định dạng của email
             if (!isValidEmail(txtemail.getText())) {
                 DialogHelper.alert(this, "Sai định dạng email!");
-                return; // Dừng hàm nếu email không hợp lệ
+                return;
             }
 
             // Kiểm tra xem email đã tồn tại hay chưa
             if (isEmailExists(txtemail.getText())) {
                 DialogHelper.alert(this, "Email đã tồn tại. Vui lòng chọn email khác.");
-                return; // Dừng hàm nếu email đã tồn tại
+                return;
             }
 
             Participants participant = new Participants();
@@ -409,7 +406,6 @@ public class Menu extends javax.swing.JFrame {
             participant.setBarcode(generateRandomBarcode());
             participant.setEmail(txtemail.getText());
 
-            // Các bước khác để thêm mới người tham gia vào cơ sở dữ liệu
             daoTK.addParticipant(participant);
             DialogHelper.alert(this, "Thêm người tham gia thành công!");
             clearTK();
@@ -450,13 +446,12 @@ public class Menu extends javax.swing.JFrame {
                 return; // Dừng hàm nếu email không hợp lệ
             }
 
-            // Lấy EventID tương ứng với tên sự kiện
             int selectedEventID = daoTK.getEventIdByName(selectedEventName);
 
             // Kiểm tra xem email đã tồn tại hay chưa
             if (isEmailExists(email)) {
                 DialogHelper.alert(this, "Email đã tồn tại. Vui lòng chọn email khác.");
-                return; // Dừng hàm nếu email đã tồn tại
+                return;
             }
 
             // Tạo đối tượng Participants với các giá trị đã lấy được
@@ -468,55 +463,39 @@ public class Menu extends javax.swing.JFrame {
             participant.setBarcode(generateRandomBarcode());
             participant.setEmail(email);
 
-            // Gọi hàm cập nhật từ lớp DAO
             daoTK.updateParticipant(participant);
-
-            // Hiển thị thông báo cập nhật thành công
             DialogHelper.alert(this, "Cập nhật người tham gia thành công!");
-
-            // Xóa dữ liệu đã nhập trong giao diện
             clearTK();
-
-            // Cập nhật lại bảng hiển thị danh sách người tham gia
             initTableTK();
         } catch (Exception ex) {
-            // Xử lý lỗi nếu có
             System.out.println(ex);
             DialogHelper.alert(this, "Lỗi khi cập nhật người tham gia!");
         }
     }
 
-    // Phương thức kiểm tra định dạng email đơn giản
+    // Phương thức kiểm tra định dạng email
     private boolean isValidEmail(String email) {
-        // Biểu thức chính quy đơn giản kiểm tra định dạng email
         String emailRegex = "^[a-zA-Z0-9_]+@[a-zA-Z0-9]+\\.[a-zA-Z]{2,4}$";
         return email.matches(emailRegex);
     }
 
     // Kiểm tra xem email đã tồn tại trong cơ sở dữ liệu hay chưa
     private boolean isEmailExists(String email) {
-        // Gọi hàm kiểm tra từ lớp DAO
         Participants existingParticipant = daoTK.getParticipantByEmail(email);
         return existingParticipant != null;
     }
 
     public void deleteTK() throws SQLException {
-        // Lấy giá trị từ trường nhập txtid
         String TKidString = txtparticipantID.getText();
 
-        // Kiểm tra xem txtid có giá trị không
         if (TKidString.isEmpty()) {
             DialogHelper.alert(this, "Vui lòng nhập ID tài khoản cần xóa!");
             return;
         }
 
         try {
-            // Chuyển đổi txtid sang kiểu dữ liệu phù hợp (ví dụ: Integer)
             int TKid = Integer.parseInt(TKidString);
-
-            // Gọi hàm xóa sự kiện từ lớp DAO
             daoTK.deleteParticipant(TKid);
-
             DialogHelper.alert(this, "Xóa thành công!");
             clearTK();
             initTableTK();
@@ -524,8 +503,8 @@ public class Menu extends javax.swing.JFrame {
             DialogHelper.alert(this, "ID sự kiện phải là một số nguyên!");
         }
     }
-
 //    tài khoản kết thúc
+
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
