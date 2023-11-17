@@ -16,15 +16,17 @@ public class CheckinStatus {
     private int participantID;
     private int eventID;
     private LocalDateTime checkinTime;
-
+    private boolean status;
+ 
     public CheckinStatus() {
     }
 
-    public CheckinStatus(int checkinID, int participantID, int eventID, LocalDateTime checkinTime) {
+    public CheckinStatus(int checkinID, int participantID, int eventID, LocalDateTime checkinTime, boolean status) {
         this.checkinID = checkinID;
         this.participantID = participantID;
         this.eventID = eventID;
         this.checkinTime = checkinTime;
+        this.status = status;
     }
 
     public int getCheckinID() {
@@ -58,6 +60,14 @@ public class CheckinStatus {
     public void setCheckinTime(LocalDateTime checkinTime) {
         this.checkinTime = checkinTime;
     }
-    
-    
+
+    public boolean isStatus() {
+        return status;
+    }
+
+    public void setStatus(boolean status) {
+        this.status = status;
+    }
+
+  
 }

@@ -10,7 +10,10 @@ import com.google.zxing.NotFoundException;
 import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
+import com.nhutin.dao.CheckinStatusDao;
+import com.nhutin.dao.ParticipantsDao;
 import com.nhutin.helper.DialogHelper;
+import com.nhutin.model.Participants;
 
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -18,6 +21,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -123,6 +127,8 @@ public class Camera extends javax.swing.JFrame implements Runnable, ThreadFactor
 
         executor.execute(this);
     }
+    ParticipantsDao daoTK = new ParticipantsDao();
+    CheckinStatusDao daoCk = new CheckinStatusDao();
 
     @Override
     public void run() {
@@ -147,26 +153,30 @@ public class Camera extends javax.swing.JFrame implements Runnable, ThreadFactor
 
             try {
                 result = new MultiFormatReader().decode(bitmap);
-                
-                
-                
+
             } catch (NotFoundException e) {
                 //No result...
             }
-
+       
             if (result != null) {
-                 result_field.setText(result.getText());
-                 
-                 DialogHelper.alert(this, "Xin chào" +result.getText() +"nhé") ;
-//            	 try {   
-//                      
-//                 } catch (IOException | URISyntaxException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//                 }
-              
+                result_field.setText(result.getText());
+//                DialogHelper.alert(this, "Check in thành công !");
+                List<Participants> list = daoTK.getAllParticipants();
+                for (Participants participants : list) {
+                    if(result.getText().equals(participants.getLastName())){
+                         DialogHelper.alert(this, "Chào "+participants.getLastName() +" đã checkin thành công!");
+                              System.out.println("" +daoCk.getCheckInByParticipantID(participants.getParticipantID()));
+//                         if(participants.getParticipantID() ==  )
+                    }else{
+                        DialogHelper.alert(this, "Mã của bạn không có trong danh sách ");
+                     
+                        result_field.setText("");
+                        break;
+                    }
+                }
+
             }
-            
+
         } while (true);
     }
 

@@ -11,12 +11,15 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.nhutin.component.TableGradientCell;
+import com.nhutin.dao.CheckinStatusDao;
 import com.nhutin.dao.EventsDao;
 import com.nhutin.dao.ParticipantsDao;
 import com.nhutin.helper.DialogHelper;
+import com.nhutin.model.CheckinStatus;
 import com.nhutin.model.Events;
 import com.nhutin.model.Participants;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -33,11 +36,27 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Properties;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.table.DefaultTableModel;
 import net.sf.jasperreports.engine.JasperCompileManager;
@@ -72,6 +91,7 @@ public class Menu extends javax.swing.JFrame {
         initDateTimePicker();
         initTable();
         initTableTK();
+        initTableCheck();
         setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
         pack();
         setLocationRelativeTo(null);
@@ -167,6 +187,33 @@ public class Menu extends javax.swing.JFrame {
             DialogHelper.alert(this, "Lỗi truy vấn dữ liệu!");
         }
     }
+
+    public void initTableCheck() throws SQLException {
+
+        DefaultTableModel model = (DefaultTableModel) tblcheck1.getModel();
+        model.setRowCount(0);
+        try {
+            List<CheckinStatus> listck = ckdao.getAllCheckinStatus();
+
+            for (CheckinStatus checkin : listck) {
+
+                System.out.println("dự liệu " + checkin.getCheckinID());
+
+                Object[] row = {
+                    checkin.getCheckinID(),
+                    daoTK.getEventNameById(checkin.getEventID()),
+                    daoTK.getNameID(checkin.getCheckinID()),
+                    checkin.getCheckinTime(),
+                    checkin.isStatus(),};
+
+                model.addRow(row);
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+            DialogHelper.alert(this, "Lỗi truy vấn dữ liệu!");
+        }
+    }
+
     int index;
 
     void edit() {
@@ -200,48 +247,39 @@ public class Menu extends javax.swing.JFrame {
     }
 
     void insert() throws ParseException, SQLException {
-        try {
-            // Lấy giá trị ngày giờ từ JXDatePicker
-            Date selectedDate = dateTimePicker.getDate();
 
-            String fileName = txtname.getText(); // Lấy nội dung từ trường txtname
-            String QR_CODE_IMAGE_PATH = "./" + fileName + ".png";
+        // Lấy giá trị ngày giờ từ JXDatePicker
+        Date selectedDate = dateTimePicker.getDate();
 
-            // Định dạng ngày trong chuỗi
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String dateString = dateFormat.format(selectedDate);
+        // Định dạng ngày trong chuỗi
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String dateString = dateFormat.format(selectedDate);
 
-            String dateString1 = txtStartDate.getText();
-            String dateString2 = txtEndDate.getText();
+        String dateString1 = txtStartDate.getText();
+        String dateString2 = txtEndDate.getText();
 
-            // Định dạng ngày trong chuỗi
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+        // Định dạng ngày trong chuỗi
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
-            // Ép kiểu từ chuỗi sang LocalDateTime
-            LocalDateTime parsedDateTime1 = LocalDateTime.parse(dateString1, formatter);
-            LocalDateTime parsedDateTime2 = LocalDateTime.parse(dateString2, formatter);
+        // Ép kiểu từ chuỗi sang LocalDateTime
+        LocalDateTime parsedDateTime1 = LocalDateTime.parse(dateString1, formatter);
+        LocalDateTime parsedDateTime2 = LocalDateTime.parse(dateString2, formatter);
 
-            // Định dạng ngày trong chuỗi
-            Date date = dateFormat.parse(dateString);
+        // Định dạng ngày trong chuỗi
+        Date date = dateFormat.parse(dateString);
 
-            Events event = new Events();
-            event.setEventName(txtname.getText());
-            event.setLocation(txtLocation.getText());
-            event.setEventDate(date);
-            event.setStartTime(parsedDateTime1);
-            event.setEndTime(parsedDateTime2);
+        Events event = new Events();
+        event.setEventName(txtname.getText());
+        event.setLocation(txtLocation.getText());
+        event.setEventDate(date);
+        event.setStartTime(parsedDateTime1);
+        event.setEndTime(parsedDateTime2);
 
-            generateQRCodeImage(txtname.getText(), 350, 350, QR_CODE_IMAGE_PATH);
+        dao.addEvent(event);
+        DialogHelper.alert(this, "Thêm thành công!");
+        clear();
+        initTable();
 
-            dao.addEvent(event);
-            DialogHelper.alert(this, "Thêm thành công!");
-            clear();
-            initTable();
-        } catch (WriterException ex) {
-            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
-        }
     }
 
     public void updateEvent() throws SQLException {
@@ -382,9 +420,79 @@ public class Menu extends javax.swing.JFrame {
         txtemail.setText("");
     }
 
-    void insertTK() throws ParseException, SQLException {
+    void sendmmail() throws IOException {
         try {
+            String fromMail = "vuluan01248@gmail.com";
+            String password = "zvdeuexhiiyqnnwg";
+            Properties properties = new Properties();
+            properties.put("mail.smtp.auth", "true");
+            properties.put("mail.smtp.starttls.enable", "true");
+            properties.put("mail.smtp.host", "smtp.gmail.com");
+            properties.put("mail.smtp.port", "587");
+            Session session = Session.getInstance(properties, new javax.mail.Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(fromMail, password);
+                }
+            });
+            //multiple recipients
+            String[] recipientsList = txtemail.getText().split(" ");
+            InternetAddress[] recipientAddresses = new InternetAddress[recipientsList.length];
+            int i = 0;
+            for (String e : recipientsList) {
+                recipientAddresses[i] = new InternetAddress(e.trim());
+                i++;
+            }
+
+            String from = fromMail;
+            String subject = "Thông tin tài khoản của bạn";
+            String content = "Đây là mã QR của bạn";
+
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(from));
+            message.setRecipients(Message.RecipientType.TO, recipientAddresses);
+            message.setSubject(subject);
+            message.setSentDate(new Date());
+            String tenhinh = txtlastName.getText();
+
+            MimeBodyPart mimeBodyPart = new MimeBodyPart();
+            mimeBodyPart.attachFile(new File("./imageQR/" + tenhinh + ".png"));
+            //attachment
+            Multipart multipart = new MimeMultipart();
+
+            //content
+            BodyPart bodyPart = new MimeBodyPart();
+            bodyPart.setText(content);
+            multipart.addBodyPart(bodyPart);
+            multipart.addBodyPart(mimeBodyPart);
+            //files
+//            if ((lastPressed == browseBtn) && (!attachField.getText().isEmpty())) {
+//                for (File file : selectedFiles) {
+//                    DataSource dataSource = new FileDataSource(file);
+//                    MimeBodyPart mimeBodyPart = new MimeBodyPart();
+//                    mimeBodyPart.setDataHandler(new DataHandler(dataSource));
+//                    mimeBodyPart.setFileName(file.getName());
+//                    multipart.addBodyPart(mimeBodyPart);
+//                }
+//            }
+            message.setContent(multipart);
+            Transport.send(message);
+//            JOptionPane.showMessageDialog(this, "Message sent!!");
+
+        } catch (MessagingException e) {
+            JOptionPane.showMessageDialog(this, e);
+            e.printStackTrace();
+        }
+    }
+    CheckinStatusDao ckdao = new CheckinStatusDao();
+
+    void insertTK() throws ParseException, SQLException {
+        CheckinStatus checkin = new CheckinStatus();
+        try {
+
             String selectedEventName = (String) cboEventId.getSelectedItem();
+            String fileName = txtlastName.getText(); // Lấy nội dung từ trường txtname
+            String QR_CODE_IMAGE_PATH = "./imageQR/" + fileName + ".png";
 
             int selectedEventID = daoTK.getEventIdByName(selectedEventName);
             // Kiểm tra định dạng của email
@@ -403,17 +511,28 @@ public class Menu extends javax.swing.JFrame {
             participant.setEventID(selectedEventID);
             participant.setFirstName(txtfirstName.getText());
             participant.setLastName(txtlastName.getText());
-            participant.setBarcode(generateRandomBarcode());
+            participant.setBarcode(txtlastName.getText());
             participant.setEmail(txtemail.getText());
 
             daoTK.addParticipant(participant);
+            generateQRCodeImage(txtlastName.getText(), 350, 350, QR_CODE_IMAGE_PATH);
+            int participantID = participant.getParticipantID(); // Lấy participantID từ participant sau khi đã thêm vào cơ sở dữ liệu
+            sendmmail();
+            System.out.println("Hehehehe" + participantID);
             DialogHelper.alert(this, "Thêm người tham gia thành công!");
+            checkin.setEventID(selectedEventID);
+            checkin.setParticipantID(1);
+            checkin.setCheckinTime(LocalDateTime.now());
+            checkin.setStatus(false);
+
+//            ckdao.addCheckinStatus(checkin);
             clearTK();
             initTableTK();
         } catch (Exception ex) {
             System.out.println(ex);
             DialogHelper.alert(this, "Lỗi khi thêm mới người tham gia!");
         }
+
     }
 
     // Hàm tạo chuỗi ngẫu nhiên 5 ký tự
@@ -559,8 +678,12 @@ public class Menu extends javax.swing.JFrame {
         cboEventId = new com.motel.swing.ComboBoxSuggestion();
         cardEvent = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        tblcheck1 = new javax.swing.JTable();
         cardUser = new javax.swing.JPanel();
         jLabel6 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        tblcheck = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -1080,7 +1203,7 @@ public class Menu extends javax.swing.JFrame {
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(txtlastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 16, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 18, Short.MAX_VALUE)
                 .addGroup(cardTaiKhoanLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(txtemail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cboEventId, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -1111,6 +1234,19 @@ public class Menu extends javax.swing.JFrame {
         jLabel2.setFont(new java.awt.Font("Times New Roman", 1, 24)); // NOI18N
         jLabel2.setText("EVENT");
 
+        tblcheck1.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null}
+            },
+            new String [] {
+                "ID", "Tên sự kiện", "Tên khách", "Ngày tham gia", "Trạng thái"
+            }
+        ));
+        jScrollPane4.setViewportView(tblcheck1);
+
         javax.swing.GroupLayout cardEventLayout = new javax.swing.GroupLayout(cardEvent);
         cardEvent.setLayout(cardEventLayout);
         cardEventLayout.setHorizontalGroup(
@@ -1119,6 +1255,11 @@ public class Menu extends javax.swing.JFrame {
                 .addGap(387, 387, 387)
                 .addComponent(jLabel2)
                 .addContainerGap(471, Short.MAX_VALUE))
+            .addGroup(cardEventLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(cardEventLayout.createSequentialGroup()
+                    .addGap(102, 102, 102)
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 736, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addContainerGap(102, Short.MAX_VALUE)))
         );
         cardEventLayout.setVerticalGroup(
             cardEventLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1126,6 +1267,11 @@ public class Menu extends javax.swing.JFrame {
                 .addGap(27, 27, 27)
                 .addComponent(jLabel2)
                 .addContainerGap(484, Short.MAX_VALUE))
+            .addGroup(cardEventLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(cardEventLayout.createSequentialGroup()
+                    .addGap(56, 56, 56)
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addContainerGap(57, Short.MAX_VALUE)))
         );
 
         jplMain.add(cardEvent, "card3");
@@ -1135,21 +1281,41 @@ public class Menu extends javax.swing.JFrame {
         jLabel6.setFont(new java.awt.Font("Times New Roman", 1, 24)); // NOI18N
         jLabel6.setText("User");
 
+        tblcheck.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null}
+            },
+            new String [] {
+                "ID", "Tên sự kiện", "Tên khách", "Ngày tham gia", "Trạng thái"
+            }
+        ));
+        jScrollPane1.setViewportView(tblcheck);
+
         javax.swing.GroupLayout cardUserLayout = new javax.swing.GroupLayout(cardUser);
         cardUser.setLayout(cardUserLayout);
         cardUserLayout.setHorizontalGroup(
             cardUserLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(cardUserLayout.createSequentialGroup()
-                .addGap(387, 387, 387)
-                .addComponent(jLabel6)
-                .addContainerGap(506, Short.MAX_VALUE))
+                .addGroup(cardUserLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(cardUserLayout.createSequentialGroup()
+                        .addGap(387, 387, 387)
+                        .addComponent(jLabel6))
+                    .addGroup(cardUserLayout.createSequentialGroup()
+                        .addGap(131, 131, 131)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 736, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(73, Short.MAX_VALUE))
         );
         cardUserLayout.setVerticalGroup(
             cardUserLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(cardUserLayout.createSequentialGroup()
                 .addGap(27, 27, 27)
                 .addComponent(jLabel6)
-                .addContainerGap(484, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 43, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(14, 14, 14))
         );
 
         jplMain.add(cardUser, "card3");
@@ -1433,8 +1599,10 @@ public class Menu extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JPanel jplMain;
     private javax.swing.JPanel jplSlideMenu;
@@ -1446,6 +1614,8 @@ public class Menu extends javax.swing.JFrame {
     private javax.swing.JLabel lblTrangChu;
     private javax.swing.JTable tableEvent;
     private javax.swing.JTable tblUser;
+    private javax.swing.JTable tblcheck;
+    private javax.swing.JTable tblcheck1;
     private javax.swing.JTextField txtEndDate;
     private com.nhutin.component.TextField txtLocation;
     private com.nhutin.component.TextField txtStartDate;

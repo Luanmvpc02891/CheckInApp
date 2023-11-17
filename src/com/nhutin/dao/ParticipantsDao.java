@@ -17,7 +17,7 @@ public class ParticipantsDao {
                 participant.getFirstName(),
                 participant.getLastName(),
                 participant.getBarcode(),
-                participant.getEmail());
+                participant.getEmail());  
     }
 
     public List<Participants> getAllParticipants() {
@@ -107,7 +107,25 @@ public class ParticipantsDao {
 
         return eventIds;
     }
-
+ public String getNameID(int idngd) {
+        String sql = "SELECT  LastName FROM Participants WHERE EventID= ?";
+        try {
+            ResultSet rs = null;
+            try {
+                rs = JdbcHelper.executeQuery(sql, idngd);
+                if (rs.next()) {
+                    return rs.getString("LastName");
+                }
+            } finally {
+                if (rs != null) {
+                    rs.getStatement().getConnection().close();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        return null;
+    }
     // Lấy tên sự kiện dựa trên ID
     public String getEventNameById(int eventId) {
         String sql = "SELECT EventName FROM Events WHERE EventID=?";
